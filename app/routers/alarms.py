@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.database import get_db
 from app.models import Alarm, OFCSegment, SegmentStatus, WorkOrder
 from app.schemas import AlarmAckBody, AlarmOut, SimulateCutIn
+from app.websocket_manager import manager
 
 router = APIRouter(prefix="/api/alarms", tags=["Alarms"])
 
@@ -18,7 +20,7 @@ def list_alarms(db: Session = Depends(get_db), active_only: bool = False):
 
 
 @router.patch("/{alarm_id}/acknowledge", response_model=AlarmOut)
-def acknowledge_alarm(alarm_id: str, body: AlarmAckBody, db: Session = Depends(get_db)):
+async def acknowledge_alarm(alarm_id: str, body: AlarmAckBody, db: Session = Depends(get_db)):
     alarm = db.query(Alarm).filter(Alarm.id == alarm_id).first()
     if not alarm:
         raise HTTPException(status_code=404, detail="Alarm not found")
@@ -26,11 +28,22 @@ def acknowledge_alarm(alarm_id: str, body: AlarmAckBody, db: Session = Depends(g
     alarm.acknowledged = body.acknowledged
     db.commit()
     db.refresh(alarm)
+    
+    # Broadcast alarm update
+    await manager.broadcast({
+        "type": "ALARM_ACKNOWLEDGED",
+        "data": {
+            "id": alarm.id,
+            "segment_id": alarm.segment_id,
+            "acknowledged": alarm.acknowledged
+        }
+    })
+    
     return alarm
 
 
 @router.post("/simulate", response_model=AlarmOut)
-def simulate_cut(payload: SimulateCutIn, db: Session = Depends(get_db)):
+async def simulate_cut(payload: SimulateCutIn, db: Session = Depends(get_db)):
     segment = db.query(OFCSegment).filter(OFCSegment.id == payload.segment_id).first()
     if not segment:
         raise HTTPException(status_code=404, detail="Segment not found")
@@ -63,6 +76,19 @@ def simulate_cut(payload: SimulateCutIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(alarm)
     
-    # Optionally, we might auto-create a WorkOrder in real system, but let's keep it separate for now
-    # or expose a specific real-time websocket alert here later.
+    # Broadcast REALTIME ALARM via WebSocket
+    await manager.broadcast({
+        "type": "FIBER_CUT_ALARM",
+        "data": {
+            "alarm_id": alarm.id,
+            "segment_id": segment.id,
+            "segment_name": segment.name,
+            "message": alarm.message,
+            "severity": alarm.severity,
+            "lat": alarm.lat,
+            "lng": alarm.lng,
+            "timestamp": alarm.created_at.isoformat() if isinstance(alarm.created_at, datetime) else str(alarm.created_at)
+        }
+    })
+    
     return alarm

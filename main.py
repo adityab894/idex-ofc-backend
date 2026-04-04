@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
-from app.routers import segments, alarms, work_orders
+from app.routers import segments, alarms, work_orders, dashboard
+from app.websocket_manager import manager
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
@@ -26,6 +27,17 @@ app.add_middleware(
 app.include_router(segments.router)
 app.include_router(alarms.router)
 app.include_router(work_orders.router)
+app.include_router(dashboard.router)
+
+@app.websocket("/api/ws/alarms")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # We don't really expect clients to send messages right now, but we must listen to keep connection alive
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 @app.get("/")
 def read_root():
