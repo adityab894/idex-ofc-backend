@@ -2,13 +2,11 @@ import json
 from app.database import SessionLocal, Base, engine
 from app.models import OFCSegment, SegmentStatus
 
-# Ensure tables exist
+
 Base.metadata.create_all(bind=engine)
 
 def seed_db():
     db = SessionLocal()
-    
-    # Check if we already have segments
     if db.query(OFCSegment).first():
         print("Database already seeded with segments!")
         db.close()
@@ -16,8 +14,7 @@ def seed_db():
 
     print("Seeding Indian Air Force Mock Nodes and Connections...")
 
-    # Define mock branches/segments for an IAF scenario
-    # Approximate coords (lng, lat) for realism: Hindon (Delhi), Ambala, Chandigarh, Halwara, Adampur
+
     mock_segments = [
         {
             "name": "Hindon - Ambala OFC Link",
