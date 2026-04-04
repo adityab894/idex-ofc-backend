@@ -12,9 +12,13 @@ DATABASE_URL = os.getenv("DB_URL", DEFAULT_DB_URL)
 class Base(DeclarativeBase):
     """SQLAlchemy declarative base."""
 
+# PostgreSQL needs different connect_args than SQLite
+is_sqlite = DATABASE_URL.startswith("sqlite")
+connect_args = {"check_same_thread": False} if is_sqlite else {}
+
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},
+    connect_args=connect_args,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
