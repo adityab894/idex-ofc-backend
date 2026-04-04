@@ -3,7 +3,7 @@ from app.database import SessionLocal, Base, engine
 from app.models import OFCSegment, SegmentStatus
 
 
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine, checkfirst=True)
 
 def seed_db():
     db = SessionLocal()

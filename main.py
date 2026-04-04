@@ -6,7 +6,7 @@ from app.routers import segments, alarms, work_orders, dashboard
 from app.websocket_manager import manager
 
 # Create tables if they don't exist
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine, checkfirst=True)
 
 app = FastAPI(
     title="OFC NMS API",
