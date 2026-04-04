@@ -7,7 +7,7 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DB_URL = f"sqlite:///{BACKEND_DIR / 'ofc_nms.db'}"
 
-DATABASE_URL = os.environ.get("DB_URL", DEFAULT_DB_URL)
+DATABASE_URL = os.getenv("DB_URL", DEFAULT_DB_URL)
 
 class Base(DeclarativeBase):
     """SQLAlchemy declarative base."""
